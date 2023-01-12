@@ -267,10 +267,10 @@ def send_data_toDB(data): #data를 받아서 보내는 코드
 
 # 6.main
 def main():
+    test_target = car()
     while(1):
         from_ino = serial_rd()         
-        if (from_ino != 0):        
-            test_target = car()
+        if (from_ino != 0):                    
             test_target.resistor_value = from_ino/10#from_ino
             test_target.parklot_num = from_ino%10#from_ino
             test_target.numplate = recog_numplate()          
@@ -284,3 +284,13 @@ def main():
 
 if __name__ == "__main__":
 	main()
+
+'''
+Need to fix
+1. recog numplate method's input 
+2. data length rcv from ino
+3. serial rd
+4. checking battery status method 
+5. LED toggling pin
+6. exact DB words
+'''
