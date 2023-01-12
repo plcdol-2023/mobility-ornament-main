@@ -9,14 +9,22 @@ class car:
 
 # 1.serical connect to arduino 
 import serial
-def serial_connect():
-    com = serial.Serial(port = "/dev/ttyACM0",
-		    baudrate = 9600,
-		    bytesize = serial.EIGHTBITS,
-		    parity = serial.PARITY_NONE,
-		    timeout = 1)
-    s = "TEST CODE"
+ser = serial.Serial(
+                port=SerialPort,  
+                baudrate=int(SerialBaudRate),
+                parity=serial.PARITY_ODD,
+                stopbits=serial.STOPBITS_ONE,
+                bytesize=serial.EIGHTBITS,
+                timeout=0)
+
+def serial_wr(): #write
+    s = "rpiend"
     com.write(s.encode())
+
+def serial_rd(): #read
+    if ser.readable(): 
+	res = ser.readline()	
+    return (res.decode()[:len(res) - 1])
 
 # 2.recognize nunmber plate
 import cv2
@@ -227,20 +235,11 @@ def recog_numplate():
                 if c.isdigit():
                     has_digit = True
                 result_chars += c    
-        print(result_chars)
-        plate_chars.append(result_chars)
-        if has_digit and len(result_chars) > longest_text:
-            longest_idx = i
+        return result_chars
 
-    info = plate_infos[longest_idx]
-    chars = plate_chars[longest_idx]
-    print(chars)
-    img_out = img_ori.copy()
-    cv2.rectangle(img_out, pt1=(info['x'], info['y']), pt2=(info['x']+info['w'], info['y']+info['h']), color=(255,0,0), thickness=2)
-    cv2.imwrite(chars + '.jpg', img_out)
 
-# 3.Check resistance 
-def check_resis():
+# 3.Check battery status
+def check_btstatus():
     pass
 
 # 4.Toggle LED
@@ -260,18 +259,28 @@ def toggle_led():
 # 5.Send data to DB
 from pymongo import MongoClient
 
-def send_data():
+def send_data_toDB(data): #data를 받아서 보내는 코드
     client = MongoClient('mongodb+srv://zzangdol:zzangdol@mobility0.j6uzn7f.mongodb.net/test')
     db = client.mydb #mydb는 데이터베이스 이름
     doc = {'name':'amy','age':25} # 데이터 하나예시
     db.users.insert_one(doc) # 'users' 이름의 collection이 생성되고, 'users' collection에 doc 딕셔너리가 저장.
 
 # 6.main
+def main():
+    while(1):
+        from_ino = serial_rd()         
+        if (from_ino != 0):        
+            test_target = car()
+            test_target.resistor_value = from_ino/10#from_ino
+            test_target.parklot_num = from_ino%10#from_ino
+            test_target.numplate = recog_numplate()          
+            test_target.battery_status = check_btstatus()
+            toggle_led()
+            send_data_toDB(test_target)
+            from_ino = 0 #초기화
+            serial_wr()
+        else 
+            print("error ###")
 
-#communication 
-serial_connect()
-
-#class declaration
-#recognize nunmber plate
-#Check resistance 
-#Led toggle 
+if __name__ == "__main__":
+	main()
