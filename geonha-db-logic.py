@@ -1,5 +1,4 @@
 # 0.initial setting
-from pymongo import MongoClient
 import time
 # import RPi.GPIO as GPIO
 import pytesseract
@@ -7,6 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 import serial
+# import for mongodb setting
+import DBconfig as db
+from datetime import datetime
 
 
 class car:
@@ -26,7 +28,6 @@ class car:
 #     bytesize=serial.EIGHTBITS,
 #     timeout=0)
 
-
 def serial_wr():  # write
     s = "rpiend"
     com.write(s.encode())
@@ -39,8 +40,6 @@ def serial_rd():  # read
 
 
 # 2.recognize nunmber plate
-
-
 def recog_numplate():
     img_ori = cv2.imread('1.jpg')  # �Է�?
     height, width, channel = img_ori.shape
@@ -264,11 +263,11 @@ def recog_numplate():
                 result_chars += c
         return result_chars
 
-
 # 3.Check battery status
+
+
 def check_btstatus():
     pass
-
 
 # 4.Toggle LED
 
@@ -285,27 +284,51 @@ def toggle_led():
 
 
 # 5.Send data to DB
+def initializeParkingStatus(collection):
 
-def send_data_toDB(data):  # data�� �޾Ƽ� ������ �ڵ�
-    client = MongoClient(
-        'mongodb+srv://zzangdol:zzangdol@mobility0.j6uzn7f.mongodb.net/test')
-    db = client.mydb  # mydb�� �����ͺ��̽� �̸�
-    doc = {'name': 'amy', 'age': 25}  # ������ �ϳ�����
-    # 'users' �̸��� collection�� �����ǰ�, 'users' collection�� doc ��ųʸ��� ����.
-    db.users.insert_one(doc)
+    print("\n>> Initializing database")
+    # Values to be updated.
+    info = {'carnum': "",
+            'battery': 0,
+            'carstatus': "",
+            'occupied': False,
+            'checktime': datetime.now()}
+    collection.update_many({}, {"$set": info})
+    # Get Data from DB
+    for item in collection.find({}):
+        print(item, end="\n")
+    return
+
+
+def updateParkingStatus(data, collection):
+
+    # DB location
+    location = {'location': data.parklot_num}
+    # Values to be updated.
+    info = {'carnum': data.numplate,
+            'battery': data.battery_status,
+            'carstatus': bool(data.resistor_value),
+            'occupied': True,
+            'checktime': datetime.now()}
+    # update DB
+    collection.update_one(location, {"$set": info})
+    print("\n>> Database updated")
+    # Get Data from DB
+    for item in collection.find(location):
+        print(item, end="\n")
+
+    return
 
 # 6.main
 
 
 def main():
     test_target = car()
-    # test data
-    testdata = {
-        "parklot_num": 1, # 차고번호 1 to 3
-        "resistor_value": 0, # 가변저항값 => 0이면 고장(false), 1이면 정상(true)
-        "numplate ": "가나다라마바사아자차카타파하", # 번호판 인식값
-        "battery_status": 80
-    }
+
+    # Get database info
+    collection = db.get_database()
+    # Initialize DB
+    initializeParkingStatus(collection)
 
     # while (1):
     # from_ino = serial_rd()
@@ -320,11 +343,22 @@ def main():
     #     serial_wr()
     # else:
     #     print("error ###")
-    test_target.parklot_num =
-    test_target.resistor_value =
-    test_target.numplate = recog_numplate()
-    test_target.battery_status = check_btstatus()
-    send_data_toDB(test_target)
+
+    # test data
+    testdata = {
+        "parklot_num": 1,  # 차고번호 1 to 3
+        "resistor_value": 1,  # 가변저항값 => 0이면 고장(false), 1이면 정상(true)
+        "numplate": "마바다 대구 1234",  # 번호판 인식값
+        "battery_status": 50
+    }
+    # set test data to car class
+    test_target.parklot_num = testdata["parklot_num"]
+    test_target.resistor_value = testdata["resistor_value"]
+    test_target.numplate = testdata["numplate"]
+    test_target.battery_status = testdata["battery_status"]
+
+    # execute DB update
+    updateParkingStatus(test_target, collection)
 
 
 if __name__ == "__main__":

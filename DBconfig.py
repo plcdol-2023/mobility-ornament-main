@@ -11,7 +11,7 @@ def get_database():
 
     # Create a connection using MongoClient. You can import MongoClient or use pymongo.MongoClient
     client = MongoClient(CONNECTION_STRING)
-    print("Database connected")
+    print("\n>> Database connected")
 
     # Create or Read From the database for our example (we will use the same database throughout the tutorial
     db = client['parking']
