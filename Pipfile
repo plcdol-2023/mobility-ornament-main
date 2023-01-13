@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pymongo = "*"
+python-dotenv = "*"
+opencv-python = "==4.5.3.56"
+opencv-contrib-python = "==4.5.3.56"
+numpy = "*"
+pytesseract = "*"
+serial = "*"
+matplotlib = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
+python_full_version = "3.9.2"
