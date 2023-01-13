@@ -1,4 +1,4 @@
-
+### ì•ˆë…•í•˜ì„¸ìš© rpi í…ŒìŠ¤íŠ¸ì—ìš© 
 # 0.initial setting 
 class car:
     def __init__(self):
@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 import pytesseract
 
 def recog_numplate():
-    img_ori = cv2.imread('1.jpg') #ÀÔ·Â?
+    img_ori = cv2.imread('1.jpg') #ì…ë ¥?
     height, width, channel = img_ori.shape
     gray = cv2.cvtColor(img_ori, cv2.COLOR_BGR2GRAY)
     structuringElement = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -231,7 +231,7 @@ def recog_numplate():
         result_chars = ''
         has_digit = False
         for c in chars:
-            if ord('°¡') <= ord(c) <= ord('ÆR') or c.isdigit():
+            if ord('ê°€') <= ord(c) <= ord('R') or c.isdigit():
                 if c.isdigit():
                     has_digit = True
                 result_chars += c    
@@ -259,11 +259,11 @@ def toggle_led():
 # 5.Send data to DB
 from pymongo import MongoClient
 
-def send_data_toDB(data): #data¸¦ ¹Ş¾Æ¼­ º¸³»´Â ÄÚµå
+def send_data_toDB(data): #dataë¥¼ ë°›ì•„ì„œ ë³´ë‚´ëŠ” ì½”ë“œ
     client = MongoClient('mongodb+srv://zzangdol:zzangdol@mobility0.j6uzn7f.mongodb.net/test')
-    db = client.mydb #mydb´Â µ¥ÀÌÅÍº£ÀÌ½º ÀÌ¸§
-    doc = {'name':'amy','age':25} # µ¥ÀÌÅÍ ÇÏ³ª¿¹½Ã
-    db.users.insert_one(doc) # 'users' ÀÌ¸§ÀÇ collectionÀÌ »ı¼ºµÇ°í, 'users' collection¿¡ doc µñ¼Å³Ê¸®°¡ ÀúÀå.
+    db = client.mydb #mydbëŠ” ë°ì´í„°ë² ì´ìŠ¤ ì´ë¦„
+    doc = {'name':'amy','age':25} # ë°ì´í„° í•˜ë‚˜ì˜ˆì‹œ
+    db.users.insert_one(doc) # 'users' ì´ë¦„ì˜ collectionì´ ìƒì„±ë˜ê³ , 'users' collectionì— doc ë”•ì…”ë„ˆë¦¬ê°€ ì €ì¥.
 
 # 6.main
 def main():
@@ -277,7 +277,7 @@ def main():
             test_target.battery_status = check_btstatus()
             toggle_led()
             send_data_toDB(test_target)
-            from_ino = 0 #ÃÊ±âÈ­
+            from_ino = 0 #ì´ˆê¸°í™”
             serial_wr()
         else 
             print("error ###")
