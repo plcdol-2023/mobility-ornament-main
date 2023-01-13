@@ -1,0 +1,12 @@
+version: "3"
+services:
+  mobility-ornament:
+    image: balenalib/raspberrypi4-64-python:3.9.14
+    working_dir: /mobility-ornament
+    command: ./entrypoint.bash # docker compose up 실행 시 실행할 명령어
+    stdin_open: true # docker run -i =>  Keep STDIN open even if not attached | 없으면 스크립트 전부 실행하고 멈춤 백그라운드 없이 멈춤
+    tty: true # docker run -t => Allocate a pseudo-TTY  | 없으면 스크립트 전부 실행하고 백그라운드 없이 멈춤
+    ports:
+      - 8080:80
+    volumes:
+      - .:/mobility-ornament # Dockerfile의 WORKDIR와 맞추기

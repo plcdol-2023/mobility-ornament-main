@@ -1,4 +1,3 @@
-
 # 0.initial setting 
 class car:
     def __init__(self):
@@ -23,7 +22,7 @@ def serial_wr(): #write
 
 def serial_rd(): #read
     if ser.readable(): 
-	res = ser.readline()	
+	    res = ser.readline()	
     return (res.decode()[:len(res) - 1])
 
 # 2.recognize nunmber plate
@@ -33,7 +32,7 @@ import matplotlib.pyplot as plt
 import pytesseract
 
 def recog_numplate():
-    img_ori = cv2.imread('1.jpg') #ÀÔ·Â?
+    img_ori = cv2.imread('1.jpg') #ï¿½Ô·ï¿½?
     height, width, channel = img_ori.shape
     gray = cv2.cvtColor(img_ori, cv2.COLOR_BGR2GRAY)
     structuringElement = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -231,7 +230,7 @@ def recog_numplate():
         result_chars = ''
         has_digit = False
         for c in chars:
-            if ord('°¡') <= ord(c) <= ord('ÆR') or c.isdigit():
+            if ord('ï¿½ï¿½') <= ord(c) <= ord('ï¿½R') or c.isdigit():
                 if c.isdigit():
                     has_digit = True
                 result_chars += c    
@@ -259,11 +258,11 @@ def toggle_led():
 # 5.Send data to DB
 from pymongo import MongoClient
 
-def send_data_toDB(data): #data¸¦ ¹Þ¾Æ¼­ º¸³»´Â ÄÚµå
+def send_data_toDB(data): #dataï¿½ï¿½ ï¿½Þ¾Æ¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Úµï¿½
     client = MongoClient('mongodb+srv://zzangdol:zzangdol@mobility0.j6uzn7f.mongodb.net/test')
-    db = client.mydb #mydb´Â µ¥ÀÌÅÍº£ÀÌ½º ÀÌ¸§
-    doc = {'name':'amy','age':25} # µ¥ÀÌÅÍ ÇÏ³ª¿¹½Ã
-    db.users.insert_one(doc) # 'users' ÀÌ¸§ÀÇ collectionÀÌ »ý¼ºµÇ°í, 'users' collection¿¡ doc µñ¼Å³Ê¸®°¡ ÀúÀå.
+    db = client.mydb #mydbï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Íºï¿½ï¿½Ì½ï¿½ ï¿½Ì¸ï¿½
+    doc = {'name':'amy','age':25} # ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï³ï¿½ï¿½ï¿½ï¿½ï¿½
+    db.users.insert_one(doc) # 'users' ï¿½Ì¸ï¿½ï¿½ï¿½ collectionï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½, 'users' collectionï¿½ï¿½ doc ï¿½ï¿½Å³Ê¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
 
 # 6.main
 def main():
@@ -277,9 +276,9 @@ def main():
             test_target.battery_status = check_btstatus()
             toggle_led()
             send_data_toDB(test_target)
-            from_ino = 0 #ÃÊ±âÈ­
+            from_ino = 0 #ï¿½Ê±ï¿½È­
             serial_wr()
-        else 
+        else :
             print("error ###")
 
 if __name__ == "__main__":
