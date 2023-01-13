@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 import pytesseract
 
 def recog_numplate():
-    img_ori = cv2.imread('1.jpg') #입력?
+    img_ori = cv2.imread('6.jpg') #????
     height, width, channel = img_ori.shape
     gray = cv2.cvtColor(img_ori, cv2.COLOR_BGR2GRAY)
     structuringElement = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -52,7 +52,7 @@ def recog_numplate():
         C=9
     )
 
-    _, contours, _ = cv2.findContours(
+    contours, _ = cv2.findContours(
         img_thresh, 
         mode=cv2.RETR_LIST, 
         method=cv2.CHAIN_APPROX_SIMPLE
@@ -203,7 +203,7 @@ def recog_numplate():
         plate_img = cv2.resize(plate_img, dsize=(0, 0), fx=1.6, fy=1.6)
         _, plate_img = cv2.threshold(plate_img, thresh=0.0, maxval=255.0, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)    
         # find contours again (same as above)
-        _, contours, _ = cv2.findContours(plate_img, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_SIMPLE)    
+        contours, _ = cv2.findContours(plate_img, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_SIMPLE)    
         plate_min_x, plate_min_y = plate_img.shape[1], plate_img.shape[0]
         plate_max_x, plate_max_y = 0, 0
 
@@ -231,11 +231,12 @@ def recog_numplate():
         result_chars = ''
         has_digit = False
         for c in chars:
-            if ord('가') <= ord(c) <= ord('R') or c.isdigit():
+            if ord('가') <= ord(c) <= ord('힣') or c.isdigit():
                 if c.isdigit():
                     has_digit = True
                 result_chars += c    
         return result_chars
+
 
 
 # 3.Check battery status
