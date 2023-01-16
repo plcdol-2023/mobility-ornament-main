@@ -1,19 +1,15 @@
 # 0.initial setting
 import time
+import RPi.GPIO as GPIO
 import pytesseract
 import matplotlib.pyplot as plt
-import serial
 import numpy as np
 import cv2
-from threading import Thread
-
+import serial
 
 # import for mongodb setting
 import src.DBconfig as db
 from datetime import datetime
-
-# 전역변수 선언
-global FRAME, capture
 
 # constants
 SERIALPORT = '/dev/ttyUSB0'
@@ -29,12 +25,17 @@ class Car:
 
 
 # 1.serical connect to arduino
-def serial_wr(ser, send_data_toUno):  # write
+
+
+ser = serial.Serial(SERIALPORT, SERIALBAUDRATE, timeout=1)
+
+
+def serial_wr(send_data_toUno):  # write
     ser.write(send_data_toUno)
     time.sleep(0.5)
 
 
-def serial_rd(ser):  # read
+def serial_rd():  # read
     try:
         if ser.readable():
             res = ser.readline().strip()
@@ -45,8 +46,9 @@ def serial_rd(ser):  # read
 
 
 # 2.recognize nunmber plate
-def recog_numplate(path):
-    img_ori = cv2.imread(path)  # ????
+
+def recog_numplate():
+    img_ori = cv2.imread('6.jpg')  # ????
     height, width, channel = img_ori.shape
     gray = cv2.cvtColor(img_ori, cv2.COLOR_BGR2GRAY)
     structuringElement = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -267,50 +269,28 @@ def recog_numplate(path):
                     has_digit = True
                 result_chars += c
         return result_chars
-
-# 카메라 로드 -> FRAME 전역변수에 계속 저장.
-
-
-def load_camera(index: int):
-    global FRAME, capture
-
-    print(">> 카메라 로드 중...")
-
-    # VideoCapture : 카메라 열기
-    capture = cv2.VideoCapture(index)
-    print(type(capture))
-    print(capture)
-
-    # 원본 동영상 크기 정보
-    w = capture.get(cv2.CAP_PROP_FRAME_WIDTH)
-    h = capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    print(">> 원본 동영상 너비(가로) : {}, 높이(세로) : {}".format(w, h))
-
-    # 동영상 크기 변환
-    # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # 가로
-    # capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # 세로
-
-    # 변환된 동영상 크기 정보
-    w = capture.get(cv2.CAP_PROP_FRAME_WIDTH)
-    h = capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
-
-    print(">> 변환된 동영상 너비(가로) : {}, 높이(세로) : {}".format(w, h))
-    print(">> 카메라 로드 완료.")
-
-    while True:
-        retval, FRAME = capture.read()
-        # 읽은 프레임이 없는 경우 종료
-        if not retval:
-            break
-        # print(FRAME)
-
-    # 카메라 메모리 연결 해제
-    capture.release()
-    print(">> release memory")
-    return
+# 3.Check battery status
 
 
-# 3.Send data to DB
+def check_btstatus():
+    pass
+
+# 4.Toggle LED
+
+
+def toggle_led(battery_status):
+    # initial setting
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(17, GPIO.OUT)
+
+    if (battery_status < 500):
+        for i in range(2):
+            GPIO.output(17, True)
+            time.sleep(2)
+            GPIO.output(17, False)
+
+
+# 5.Send data to DB
 def initializeParkingStatus(collection):
 
     print("\n>> Initializing database")
@@ -346,58 +326,42 @@ def updateParkingStatus(data, collection):
 
     return
 
+# 6.main
 
-if (__name__ == "__main__"):
-    try:
-        # 시리얼 연결 생성
-        ser = serial.Serial(SERIALPORT, SERIALBAUDRATE, timeout=1)
-        
-        # 카메라 인덱스 및 연결, 쓰레드 실행
-        camera_index = 0
-        camera_listener = Thread(name="load_camera", target=load_camera,
-                                 args=(camera_index,), daemon=True)
-        camera_listener.start()
 
-        # Car 인스턴스 생성
-        target = Car()
+def main():
+    test_target = Car()
 
-        # Get database info
-        collection = db.get_database()
+    # Get database info
+    collection = db.get_database()
+    # Initialize DB
+    initializeParkingStatus(collection)
 
-        # Initialize DB
-        initializeParkingStatus(collection)
-
-        time.sleep(2)
-        print(">> System Loaded Complete . \n")
-
-        while True:
-            from_ino = serial_rd(ser)
+    test_target = Car()
+    while (1):
+        try:
+            from_ino = serial_rd()
             if (from_ino != 0):
-                target.resistor_value = (
+                test_target.resistor_value = (
                     from_ino - (from_ino//10000)*10000)//1000  # from_ino
-                target.parklot_num = from_ino//10000  # from_ino
-                cv2.imwrite('img/img_captured_test.jpg', FRAME,
-                            params=[cv2.IMWRITE_JPEG_QUALITY, 100])
-                print(">> image saved")
-                target.numplate = recog_numplate('img/img_captured_test.jpg')
-                print(f">> {target.numplate}")
-                target.battery_status = (from_ino % 1000)/10
-                # execute DB update
-                updateParkingStatus(target, collection)
-                # initialize received data
+                test_target.parklot_num = from_ino//10000  # from_ino
+                test_target.numplate = recog_numplate()
+                test_target.battery_status = (from_ino % 1000)/10
+                # 4. excute toggle LED
+                toggle_led(test_target.battery_status)
+                # 5. execute DB update
+                updateParkingStatus(test_target, collection)
+
+                # 6. initialize received data
                 from_ino = 0
-                # time.sleep(1)
-                serial_wr(ser, b'1\n')
+                # time.sleep(1000)
+                # serial_wr(b'1\n')
+        except TypeError as error:
+            print(error)
 
-    except TypeError as error:
-        print(error)
-    except KeyboardInterrupt as e:
-        print('강제종료', e)
-    finally:
-        # 모든 창 닫기
-        capture.release()
-        print("클라이언트가 종료되었습니다.")
 
+if __name__ == "__main__":
+    main()
 
 '''
 Need to fix
@@ -408,14 +372,6 @@ Need to fix
 5. LED toggling pin
 6. exact DB words
 '''
-
-# OCR test codes
-# time.sleep(2)
-# print(">>image saved")
-# cv2.imwrite('img/img_captured_test.jpg', FRAME,
-#             params=[cv2.IMWRITE_JPEG_QUALITY, 100])
-# target.numplate = recog_numplate('img/img_captured_test.jpg')
-# print(target.numplate)
 
 # # test data
 # testdata = {
