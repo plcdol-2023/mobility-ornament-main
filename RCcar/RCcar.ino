@@ -1,6 +1,6 @@
 #include <SoftwareSerial.h>
-// RX:7, TX:8 (RX는 HC06의 TX와 연결시킨다.)
-SoftwareSerial BTSerial(7, 8);
+#include "Adafruit_VL53L0X.h"
+
 
 //==================pre-made macro function=========================
 #define LmotorF(speed) \
@@ -50,6 +50,7 @@ SoftwareSerial BTSerial(7, 8);
 #define FrontLED_OFF \
   { digitalWrite(P_FrontLED, LOW); }
 
+
 #define Hspeed 255  // 고속
 #define Lspeed 90   // 저속
 #define Tspeed 150  // 탱크턴에 맞는 속도
@@ -62,11 +63,7 @@ SoftwareSerial BTSerial(7, 8);
 #define P_SerialRx 0  //mini type-B USB Rx
 #define P_SerialTx 1  //mini type-B USB Tx
 
-#define P_trig 2  //ultrawave trig
-#define P_echo 4  //ultrawave echo
-
-#define P_connectMoter1 5  //connectorMoter input1
-#define P_connectMoter2 6  //connectorMoter input2
+#define P_servo 5  //connectorMoter input1
 
 #define P_BTSerialRx 7  //bluetoothRx
 #define P_BTSerialTx 8  //bluetoothTx
@@ -82,156 +79,186 @@ SoftwareSerial BTSerial(7, 8);
 #define P_lineSensorC A1  //centor sensor of line follower
 #define P_lineSensorR A2  //right sensor of line follower sensor
 
-#define P_inspect A3       //Potentiometer wire
-#define P_batteryCheck A4  //battery positive pole wire
+#define P_lidarSDA A4
+#define P_lidarSCL A5
+
+#define P_batteryCheck A6  //battery positive pole wire
+#define P_inspect A7       //Potentiometer wire
 //----------------------------------------------------------------
 
 //=================
-#define stopcount 15000  // 라인트레이서의 정지조건, zerocount가 얼마가 되면 멈추나?
+#define stopcount 30  // 라인트레이서의 정지조건, timeoutCount가 얼마가 되면 멈추나?
 
+#define minPulse 600
+#define maxPulse 2400
+#define period 20000
 //------------------------
-// 상태변수들
+
+
+//=============현재 안씀=============================
+SoftwareSerial BTSerial(7, 8);  // RX:7, TX:8 (RX는 HC06의 TX와 연결시킨다.)
+
+byte maxdistancet = 150;
+float timeOut = 2 * (maxdistancet + 10) / 100 / 340 * 1000000;
+//===================================================
+
+
+VL53L0X_RangingMeasurementData_t measure;  // Lidar 측정값
+Adafruit_VL53L0X lox = Adafruit_VL53L0X();
+
+//================상태변수들================
 int lineSensorInput;
-int zerocount = 0;
+int timeoutCount = 0;
 
-int parking_lot = 1 ;
-int troubleRatio;
-int batteryVoltage;
+//-------------차량 체크 값------------------
+unsigned int inspectionVal = 0;
+int trouble = 0;
 
-int send_flag = 0 ;
-int drive_flag = 1 ;
+float batteryVal = 0;
+float batteryPercent = 0;
+
+float distance;
+int lastCarNum = 0;
+//------------------------------------------
+//===========================================
+
 
 //=======================================
-void RCMove(int LS, int RS);
-
 void setup() {
-  Serial.begin(9600);
-  // BTSerial.begin(9600);
+  Serial.begin(115200);
+  BTSerial.begin(9600);
+  delay(50);
+  // wait until serial port opens for native USB devices
+  while (!Serial) {
+    delay(1);
+  }
 
-  pinMode(P_trig, OUTPUT);
-  pinMode(P_echo, INPUT);
+  if (!lox.begin()) {
+    Serial.println(F("Failed to boot VL53L0X"));
+    while (1)
+      ;
+  }
 
-  pinMode(P_connectMoter1, OUTPUT);
-  pinMode(P_connectMoter2, OUTPUT);
-  analogWrite(P_connectMoter1, 0);
-  analogWrite(P_connectMoter2, 0);
-
-
-  pinMode(P_motorR1, OUTPUT);
-  pinMode(P_motorR2, OUTPUT);
-  pinMode(P_motorL1, OUTPUT);
-  pinMode(P_motorL2, OUTPUT);
+  pinMode(P_servo, OUTPUT);
+  digitalWrite(P_servo, LOW);
+  setServo(180);
 
   pinMode(P_FrontLED, OUTPUT);
   FrontLED_OFF;
-
-  //@@@analogRead port doesn't need configuration
-
-  // BTSerial.print("*RR255G0B0*");
-  // BTSerial.print("*YR0G0B0*");
-  // BTSerial.print("*GR0G0B*");
 }
 
 //=======================================
-float distance;
+void loop() {
 
-void loop() {  
-  
-  if(Serial.available() > 0 && drive_flag==0){
-    String data = Serial.readStringUntil('\n');
-    Serial.println(data);
-    delay(1000);
-    if((data.toInt())!=1){
-      return;
-    }
-    drive_flag = 1;
+  //while(!(BTSerial.available())) {}
+  followLine();
+  checkdistancetance();
+  Serial.print("dis:"); Serial.println(distance);
+  if (distance < 180 && distance > 100) {
+    Serial.println("check!!");  //FORDEBUG
+    delay(200);
+    RCMove(0, 0);
+
+    delay(5000);
   }
 
+  // if (distance < 170 && distance > 100) {
+  //   Serial.println("check!!");  //FORDEBUG
+  //   delay(100);
+  //   RCMove(0, 0);
 
-  if (drive_flag == 1){
-  
-    followLine();
-    distance = getDistance();
-    
-    if(distance<15) {
-      delay(100);
-      drive_flag=0;
-    }
-    
-  }    
+  //   delay(1000);
+  //   while (!checking()) {};  //4단자에 모두 접속할 떄까지 반복시도.
+  //   Serial.print(inspectionVal); Serial.print(" ,"); Serial.println(batteryVal);  //FORDEBUG
 
-  else if(drive_flag ==0) {
-    
-      RCMove(0,0);
-      checking(); // get troubleratio, batteryVoltage
+  //   sendingData();
 
-      String send_string = String(parking_lot)+String(troubleRatio)+String(batteryVoltage);
-      Serial.println(send_string);
-      
-    }
-    
-  
+  //   distance = 100;
+  //   //waitForStart();
+  // }
 }
 
-void checking() {
-  
-  parking_lot ++;
-  parking_lot = parking_lot % 3;
-  troubleRatio = 1;
-  batteryVoltage = 50;
-  
+void setServo(int degree) {
+  int hTime = 0;
+  int lTime = 0;
+
+  if (degree < 0) degree = 0;
+  if (degree > 180) degree = 180;
+
+  hTime = (int)(minPulse + ((maxPulse - minPulse) / 180.0 * degree));
+  lTime = period - hTime;
+
+  digitalWrite(P_servo, HIGH);
+  delayMicroseconds(hTime);
+  digitalWrite(P_servo, LOW);
+  delayMicroseconds(lTime);
 }
 
-float getDistance() {  
-  float duration, distance;
-
-  digitalWrite(P_trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(P_trig, LOW);
-
-  duration = pulseIn(P_echo, HIGH);  //물체에 반사되어돌아온 초음파의 시간을 변수에 저장합니다.
-  distance = duration * 17 /1000;   //duration[us] * (1s/1,000,000us) * 340m/s * (100cm/1m) / 2 => 17 / 1000 [cm]
-  
-  return distance;
+void waitForStart() {
+  while (!(Serial.available())) {}  //waiting until raspberrypi send ACK
+  String data = Serial.readStringUntil('\n');
+  delay(1000);
+  // if((data.toInt())!=1){}
 }
 
-void followLine() {
-  lineSensorInput = PINC &= B00000111;  //Right:centerk:left
+void sendingData() {
+  String send_string = String(lastCarNum) + String(trouble) + String((int)(batteryPercent * 10));
+  Serial.println(send_string);  //tranfer to raspberrypi
 
-  switch (lineSensorInput) {
-    //공중에 떠있음
-    case 0b000: RCMove(0, 0); break;
+  delay(5000);
+}
 
-    //라인을 벗어남
-    case 0b111:
-      if (zerocount > stopcount)
-        RCMove(0, 0);
-      else {
-        RCMove(90, 90);
-        zerocount += 1;
+int checking() {
+  int success = 0;
+  int i;
+
+  for (i = 180; i >= 10; i--) {
+    setServo(i);
+    delay(20);
+
+    inspectionVal = (unsigned int)((unsigned int)(analogRead(P_inspect) * 100) / 512);
+    batteryVal = (float)analogRead(P_batteryCheck) * 5 / 1024;
+    Serial.print(inspectionVal);
+    Serial.print(" ,");
+    Serial.println(batteryVal);  //FORDEBUG
+
+    FrontLED_ON;
+    if (inspectionVal > 2 && batteryVal > 3) {
+      if (i - 5 > 10) setServo(i - 5);
+      delay(500);
+
+      for (int i = 0; i < 150; i++) {
+        inspectionVal = (unsigned int)((unsigned int)(analogRead(P_inspect) * 100) / 512);
+        trouble = (inspectionVal > 50 ? 1 : 0);
+
+        batteryVal = ((float)analogRead(P_batteryCheck) * 5 / 1024);
+        if (batteryVal < 3.7)
+          batteryPercent = 0;
+        else
+          batteryPercent = (batteryVal - 3.7) / 0.5 * 100;
+        Serial.print(inspectionVal);
+        Serial.print(" ,");
+        Serial.println(batteryVal);  //FORDEBUG
+        delay(300);
       }
-      break;
 
-    //중앙 위치
-    case 0b101:
-      RCMove(90, 90);
-      zerocount = 0;
+      success = 1;
+      lastCarNum++;
       break;
-
-    //오른쪽으로 감
-    case 0b100:
-    case 0b110:
-      RCMove(7, 70);
-      zerocount = 0;
-      break;
-
-    //왼쪽으로 감
-    case 0b001:
-    case 0b011:
-      RCMove(70, 7);
-      zerocount = 0;
-      break;
+    }
   }
+
+  delay(2000);
+
+  for (; i < 180; i++) {
+    setServo(i);
+    delay(10);
+  }
+
+  delay(2000);
+  FrontLED_OFF;
+
+  return success;
 }
 
 void RCMove(int LS, int RS) {
@@ -249,5 +276,51 @@ void RCMove(int LS, int RS) {
   } else {
     analogWrite(P_motorR2, 0);
     analogWrite(P_motorR1, -RS);
+  }
+}
+
+void checkdistancetance() {
+  lox.rangingTest(&measure, false);  // pass in 'true' to get debug data printout!
+  if (measure.RangeStatus != 4) {    // phase failures have incorrect data
+    distance = measure.RangeMilliMeter;
+  }
+}
+
+void followLine() {
+  lineSensorInput = PINC &= B00000111;  //Right:centerk:left
+
+  switch (lineSensorInput) {
+    //공중에 떠있음
+    case 0b000: RCMove(80, 80); break;
+
+    //라인을 벗어남
+    case 0b111:
+      if (timeoutCount > stopcount)
+        RCMove(0, 0);
+      else {
+        RCMove(80, 80);
+        timeoutCount += 1;
+      }
+      break;
+
+    //중앙 위치
+    case 0b101:
+      RCMove(80, 80);
+      timeoutCount = 0;
+      break;
+
+    //오른쪽으로 감
+    case 0b100:
+    case 0b110:
+      RCMove(-90, 120);
+      timeoutCount = 0;
+      break;
+
+    //왼쪽으로 감
+    case 0b001:
+    case 0b011:
+      RCMove(120, -90);
+      timeoutCount = 0;
+      break;
   }
 }
