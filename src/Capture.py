@@ -37,3 +37,6 @@ def Load_Camera(index: int):
     capture.release()
     print(">> release memory")
     return 
+
+if (__name__ == "__main__"):
+    Load_Camera(0)

@@ -40,7 +40,7 @@ def serial_rd(ser):  # read
             # print(res)
             # print(res.decode('utf-8'))
             # print(str(res, 'utf-8'))
-            if (res == b''):
+            if(res == b'') :
                 return 0
         return (int(res))
         # return (res.decode('utf-8'))
@@ -355,7 +355,7 @@ def updateParkingStatus(data, collection):
 if (__name__ == "__main__"):
     try:
         # 시리얼 연결 생성
-        ser = serial.Serial(SERIALPORT, SERIALBAUDRATE, timeout=1)
+        # ser = serial.Serial(SERIALPORT, SERIALBAUDRATE, timeout=1)
 
         # 카메라 인덱스 및 연결, 쓰레드 실행
         camera_index = 0
@@ -377,57 +377,52 @@ if (__name__ == "__main__"):
 
         while True:
             try:
-                from_ino = serial_rd(ser)
-                # from_ino = 10414
-                print(f"recevied :{from_ino}")
-                if (from_ino != 0):
-                    from_ino = str(from_ino)
-                    # get parklot_num
-                    # target.parklot_num = from_ino//10000  # from_ino
-                    target.parklot_num = int(from_ino[0])  # from_ino
-                    print(target.parklot_num)
+                # from_ino = serial_rd(ser)
+                # print(f"recevied :{from_ino}")
+                # if (from_ino != 0):
+                #     # get parklot_num
+                #     target.parklot_num = from_ino//10000  # from_ino
+                #     # target.parklot_num = int(from_ino[0])  # from_ino
 
-                    # get resistor value
-                    # target.resistor_value = (
-                    #     from_ino - (from_ino//10000)*10000)//1000  # from_ino
-                    target.resistor_value = int(from_ino[1])
-                    print(target.resistor_value)
+                #     # get resistor value
+                #     target.resistor_value = (
+                #         from_ino - (from_ino//10000)*10000)//1000  # from_ino
+                #     # target.resistor_value = int(from_ino[1])
 
-                    # get tesseract ocr results
-                    cv2.imwrite('img/img_captured_test.jpg', FRAME,
-                                params=[cv2.IMWRITE_JPEG_QUALITY, 100])
-                    print(">> image saved, try tesseract OCR")
-                    target.numplate = recog_numplate(
-                        'img/img_captured_test.jpg')
-                    print(f">> {target.numplate}")
+                #     # get tesseract ocr results
+                #     cv2.imwrite('img/img_captured_test.jpg', FRAME,
+                #                 params=[cv2.IMWRITE_JPEG_QUALITY, 100])
+                #     print(">> image saved, try tesseract OCR")
+                #     target.numplate = recog_numplate(
+                #         'img/img_captured_test.jpg')
+                #     print(f">> {target.numplate}")
 
-                    # battery charging..
-                    print(">> battery Charging...")
-                    print(from_ino[2:4])
-                    target.battery_status = int(from_ino[2:4])
-                    # target.battery_status = (from_ino % 1000)/10
-                    print(target.battery_status)
-                    updateParkingStatus(target, collection)
-                    while target.battery_status < 100:
-                        target.battery_status = target.battery_status + 20
-                        if (target.battery_status > 100):
-                            target.battery_status = 100
-                        print(target.battery_status)
-                        time.sleep(2)
-                        updateParkingStatus(target, collection)
-
-                    # initialize received data
-                    from_ino = 0
-                    # 1초 후 아두이노에 완료신호 전달
-                    time.sleep(1)
-                    # serial_wr(ser, b'1\n')
-
-                # time.sleep(2)
-                # cv2.imwrite('img/img_captured_test.jpg', FRAME,
-                #             params=[cv2.IMWRITE_JPEG_QUALITY, 100])
-                # print(">> image saved")
-                # target.numplate = recog_numplate('img/img_captured_test.jpg')
-                # print(target.numplate)
+                #     # battery charging..
+                #     print(">> battery Charging...")
+                #     # target.battery_status = int(from_ino[2, 4])/10
+                #     target.battery_status = (from_ino % 1000)/10
+                #     # execute DB update
+                #     updateParkingStatus(target, collection)
+                #     while target.battery_status < 100:
+                #         target.battery_status = target.battery_status + 20
+                #         if (target.battery_status > 100):
+                #             target.battery_status = 100
+                #         print(target.battery_status)
+                #         time.sleep(2)
+                #         updateParkingStatus(target, collection)
+                        
+                #     # initialize received data
+                #     from_ino = 0
+                #     # 1초 후 아두이노에 완료신호 전달
+                #     time.sleep(1)
+                #     serial_wr(ser, b'1\n')
+                    
+                time.sleep(2)
+                cv2.imwrite('img/img_captured_test.jpg', FRAME,
+                            params=[cv2.IMWRITE_JPEG_QUALITY, 100])
+                print(">> image saved")
+                target.numplate = recog_numplate('img/img_captured_test.jpg')
+                print(target.numplate)
             except TypeError as error:
                 # print(error)
                 pass
